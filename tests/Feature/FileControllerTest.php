@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 uses(LazilyRefreshDatabase::class);
 
-test('upload form is displayed', function () {
+test('upload form is displayed', function (): void {
     $this->withoutVite();
 
     $response = $this->get(route('home'));
@@ -15,7 +15,7 @@ test('upload form is displayed', function () {
     $response->assertSee('Selecione um arquivo');
 });
 
-test('anonymous visitor can upload a file that expires after seven days', function () {
+test('anonymous visitor can upload a file that expires after seven days', function (): void {
     Storage::fake('local');
     $this->travelTo('2026-09-13 12:00:00');
     $file = UploadedFile::fake()->create('anotacoes.txt', 512, 'text/plain');
@@ -34,7 +34,7 @@ test('anonymous visitor can upload a file that expires after seven days', functi
     Storage::disk('local')->assertExists($storedFile->path);
 });
 
-test('file is required', function () {
+test('file is required', function (): void {
     Storage::fake('local');
 
     $response = $this->from(route('home'))->post(route('files.store'));
@@ -46,7 +46,7 @@ test('file is required', function () {
     Storage::disk('local')->assertDirectoryEmpty('files');
 });
 
-test('file cannot exceed ten megabytes', function () {
+test('file cannot exceed ten megabytes', function (): void {
     Storage::fake('local');
     $file = UploadedFile::fake()->create('grande.bin', 10 * 1024 + 1);
 
@@ -59,7 +59,7 @@ test('file cannot exceed ten megabytes', function () {
     Storage::disk('local')->assertDirectoryEmpty('files');
 });
 
-test('file can have exactly ten megabytes', function () {
+test('file can have exactly ten megabytes', function (): void {
     Storage::fake('local');
     $file = UploadedFile::fake()->create('limite.bin', 10 * 1024);
 
@@ -71,7 +71,7 @@ test('file can have exactly ten megabytes', function () {
     Storage::disk('local')->assertExists($storedFile->path);
 });
 
-test('original filename is escaped in the confirmation', function () {
+test('original filename is escaped in the confirmation', function (): void {
     Storage::fake('local');
     $this->withoutVite();
     $file = UploadedFile::fake()->create('relatorio & resumo.txt', 1, 'text/plain');
@@ -83,7 +83,7 @@ test('original filename is escaped in the confirmation', function () {
         ->assertDontSee('relatorio & resumo.txt', escape: false);
 });
 
-test('upload endpoint is limited to ten attempts per minute for an ip address', function () {
+test('upload endpoint is limited to ten attempts per minute for an ip address', function (): void {
     Storage::fake('local');
     $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.10']);
 
@@ -98,10 +98,11 @@ test('upload endpoint is limited to ten attempts per minute for an ip address', 
     ]);
 
     $response->assertTooManyRequests();
+
     expect(File::count())->toBe(10);
 });
 
-test('expired files are pruned with their stored files', function () {
+test('expired files are pruned with their stored files', function (): void {
     Storage::fake('local');
     $this->travelTo('2026-09-20 12:00:00');
     Storage::disk('local')->put('files/expired.txt', 'expired');
@@ -116,6 +117,7 @@ test('expired files are pruned with their stored files', function () {
         'expires_at' => '2026-09-20 11:59:59',
     ]);
     $expiredFile->save();
+
     $activeFile = new File([
         'disk' => 'local',
         'path' => 'files/active.txt',

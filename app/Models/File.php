@@ -15,7 +15,8 @@ use RuntimeException;
 #[Fillable(['disk', 'path', 'original_name', 'mime_type', 'size', 'expires_at'])]
 class File extends Model
 {
-    use HasUuids, Prunable;
+    use HasUuids;
+    use Prunable;
 
     /**
      * Get the query that selects expired files for pruning.

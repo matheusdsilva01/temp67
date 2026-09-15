@@ -31,8 +31,6 @@ class AppServiceProvider extends ServiceProvider
             DevCommands::artisan('schedule:work', 'scheduler');
         }
 
-        RateLimiter::for('files', function (Request $request): Limit {
-            return Limit::perMinute(10)->by($request->ip());
-        });
+        RateLimiter::for('files', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()));
     }
 }

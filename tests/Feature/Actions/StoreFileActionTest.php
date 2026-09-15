@@ -5,11 +5,11 @@ use App\Models\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-afterEach(function () {
+afterEach(function (): void {
     File::flushEventListeners();
 });
 
-test('stored file is removed when persistence fails', function () {
+test('stored file is removed when persistence fails', function (): void {
     Storage::fake('local');
     File::creating(function (): never {
         throw new RuntimeException('Persistence failed.');

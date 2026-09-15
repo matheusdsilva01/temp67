@@ -31,10 +31,10 @@ class StoreFileAction
             $file->save();
 
             return $file;
-        } catch (Throwable $exception) {
+        } catch (Throwable $throwable) {
             Storage::disk($disk)->delete($path);
 
-            throw $exception;
+            throw $throwable;
         }
     }
 }

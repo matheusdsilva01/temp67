@@ -11,7 +11,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
-/** @property Carbon $expires_at */
+/**
+ * @property string $public_id
+ * @property Carbon $expires_at
+ */
 #[Fillable(['disk', 'path', 'original_name', 'mime_type', 'size', 'expires_at'])]
 class File extends Model
 {

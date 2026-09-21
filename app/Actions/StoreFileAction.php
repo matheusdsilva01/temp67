@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -28,6 +29,7 @@ class StoreFileAction
                 'size' => (int) $uploadedFile->getSize(),
                 'expires_at' => now()->addDays(7),
             ]);
+            $file->public_id = (string) Str::uuid();
             $file->save();
 
             return $file;

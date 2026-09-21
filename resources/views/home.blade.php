@@ -54,6 +54,9 @@
                                 <p class="text-sm font-semibold text-lime-300">Upload concluído</p>
                                 <p class="break-all text-sm text-stone-200">{{ session('file.name') }}</p>
                                 <p class="text-xs text-stone-400">Expira em {{ session('file.expires_at') }}</p>
+                                <a href="{{ session('file.url') }}" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-lime-300 px-4 py-2 text-sm font-bold text-stone-950 transition hover:bg-lime-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime-300">
+                                    Abrir arquivo
+                                </a>
                             </div>
                         @endif
 

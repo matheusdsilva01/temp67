@@ -4,6 +4,8 @@ use App\Models\File;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 uses(LazilyRefreshDatabase::class);
 
@@ -25,13 +27,118 @@ test('anonymous visitor can upload a file that expires after seven days', functi
     $storedFile = File::sole();
     $response
         ->assertRedirectToRoute('home')
-        ->assertSessionHas('file.name', 'anotacoes.txt');
-    expect($storedFile->disk)->toBe('local')
+        ->assertSessionHas('file.name', 'anotacoes.txt')
+        ->assertSessionHas('file.url', route('files.show', ['file' => $storedFile->public_id]));
+    $fileUrl = $response->getSession()->get('file.url');
+    $this->get($fileUrl)->assertOk();
+    $this->travelTo('2026-09-20 12:00:01');
+    $this->get($fileUrl)->assertNotFound();
+    expect(Str::isUuid($storedFile->public_id))->toBeTrue()
+        ->and($storedFile->disk)->toBe('local')
         ->and($storedFile->original_name)->toBe('anotacoes.txt')
         ->and($storedFile->mime_type)->toBe('text/plain')
         ->and($storedFile->size)->toBe(512 * 1024)
         ->and($storedFile->expires_at->toDateTimeString())->toBe('2026-09-20 12:00:00');
     Storage::disk('local')->assertExists($storedFile->path);
+});
+
+test('public link displays a stored file inline', function (): void {
+    Storage::fake('local');
+    $this->travelTo('2026-09-13 12:00:00');
+    Storage::disk('local')->put('files/document.txt', 'temporary content');
+    $file = new File([
+        'disk' => 'local',
+        'path' => 'files/document.txt',
+        'original_name' => 'document.txt',
+        'mime_type' => 'text/plain',
+        'size' => 17,
+        'expires_at' => '2026-09-20 12:00:00',
+    ]);
+    $file->public_id = (string) Str::uuid();
+    $file->save();
+    $url = route('files.show', ['file' => $file->public_id]);
+
+    $response = $this->get($url);
+
+    $response
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+        ->assertHeader('Content-Disposition', 'inline; filename=document.txt')
+        ->assertHeaderContains('Cache-Control', 'no-store')
+        ->assertHeader('Content-Security-Policy', "sandbox; default-src 'none'")
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
+    expect($response->baseResponse)->toBeInstanceOf(BinaryFileResponse::class)
+        ->and($response->baseResponse->getFile()->getContent())->toBe('temporary content');
+});
+
+test('internal id cannot display a stored file', function (): void {
+    Storage::fake('local');
+    $file = new File([
+        'disk' => 'local',
+        'path' => 'files/private.txt',
+        'original_name' => 'private.txt',
+        'mime_type' => 'text/plain',
+        'size' => 7,
+        'expires_at' => now()->addDay(),
+    ]);
+    $file->public_id = (string) Str::uuid();
+    $file->save();
+
+    $this->get(route('files.show', ['file' => $file->id]))->assertNotFound();
+});
+
+test('public link cannot display an expired file', function (): void {
+    Storage::fake('local');
+    $file = new File([
+        'disk' => 'local',
+        'path' => 'files/expired.txt',
+        'original_name' => 'expired.txt',
+        'mime_type' => 'text/plain',
+        'size' => 7,
+        'expires_at' => now()->subSecond(),
+    ]);
+    $file->public_id = (string) Str::uuid();
+    $file->save();
+    $url = route('files.show', ['file' => $file->public_id]);
+
+    $this->get($url)->assertNotFound();
+});
+
+test('public link returns not found when stored content is missing', function (): void {
+    Storage::fake('local');
+    $file = new File([
+        'disk' => 'local',
+        'path' => 'files/missing.txt',
+        'original_name' => 'missing.txt',
+        'mime_type' => 'text/plain',
+        'size' => 7,
+        'expires_at' => now()->addDay(),
+    ]);
+    $file->public_id = (string) Str::uuid();
+    $file->save();
+    $url = route('files.show', ['file' => $file->public_id]);
+
+    $this->get($url)->assertNotFound();
+});
+
+test('malformed public id returns not found', function (): void {
+    $this->get('/files/not-a-uuid')->assertNotFound();
+});
+
+test('uploaded files receive different public ids', function (): void {
+    Storage::fake('local');
+
+    $this->post(route('files.store'), [
+        'file' => UploadedFile::fake()->create('first.txt', 1),
+    ])->assertRedirectToRoute('home');
+    $this->post(route('files.store'), [
+        'file' => UploadedFile::fake()->create('second.txt', 1),
+    ])->assertRedirectToRoute('home');
+
+    $publicIds = File::query()->pluck('public_id');
+
+    expect($publicIds)->toHaveCount(2)
+        ->and($publicIds->unique())->toHaveCount(2);
 });
 
 test('file is required', function (): void {
@@ -80,6 +187,7 @@ test('original filename is escaped in the confirmation', function (): void {
 
     $response
         ->assertSee('relatorio &amp; resumo.txt', escape: false)
+        ->assertSee('Abrir arquivo')
         ->assertDontSee('relatorio & resumo.txt', escape: false);
 });
 
@@ -116,6 +224,7 @@ test('expired files are pruned with their stored files', function (): void {
         'size' => 7,
         'expires_at' => '2026-09-20 11:59:59',
     ]);
+    $expiredFile->public_id = (string) Str::uuid();
     $expiredFile->save();
 
     $activeFile = new File([
@@ -126,6 +235,7 @@ test('expired files are pruned with their stored files', function (): void {
         'size' => 6,
         'expires_at' => '2026-09-20 12:00:01',
     ]);
+    $activeFile->public_id = (string) Str::uuid();
     $activeFile->save();
 
     $this->artisan('model:prune', ['--model' => [File::class]])->assertSuccessful();

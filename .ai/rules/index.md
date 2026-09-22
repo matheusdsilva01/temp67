@@ -5,3 +5,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | app/{Models/File.php,Http/Controllers/FileController.php,Actions/StoreFileAction.php}|routes/web.php|database/migrations/*files* | .ai/rules/migrations.md |
+| app/{Models/User.php,Filament/**,Actions/DeleteFileAction.php} | .ai/rules/models.md |

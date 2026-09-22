@@ -4,7 +4,9 @@ namespace App\Filament\Resources\Files\Tables;
 
 use App\Actions\DeleteFileAction;
 use App\Models\File;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -51,6 +53,11 @@ class FilesTable
                     }),
             ])
             ->recordActions([
+                Action::make('open')
+                    ->label('Abrir')
+                    ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+                    ->url(fn (File $record): string => route('files.show', ['file' => $record->public_id]))
+                    ->openUrlInNewTab(),
                 DeleteAction::make()
                     ->using(function (File $record): bool {
                         app(DeleteFileAction::class)->handle($record);

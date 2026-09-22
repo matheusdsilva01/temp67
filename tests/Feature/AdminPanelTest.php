@@ -4,6 +4,7 @@ use App\Actions\DeleteFileAction;
 use App\Filament\Resources\Files\Pages\ListFiles;
 use App\Models\File;
 use App\Models\User;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -61,6 +62,29 @@ test('admin upload rejects files larger than ten megabytes', function (): void {
 
     expect(File::query()->doesntExist())->toBeTrue();
     Storage::disk('local')->assertDirectoryEmpty('files');
+});
+
+test('file rows link to the public file URL in a new tab', function (): void {
+    $admin = User::factory()->admin()->create();
+    $file = new File([
+        'disk' => 'local',
+        'path' => 'files/documento.txt',
+        'original_name' => 'documento.txt',
+        'mime_type' => 'text/plain',
+        'size' => 512,
+        'expires_at' => now()->addWeek(),
+    ]);
+    $file->public_id = (string) Str::uuid();
+    $file->save();
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListFiles::class)
+        ->assertActionHasUrl(
+            TestAction::make('open')->table($file),
+            route('files.show', ['file' => $file->public_id]),
+        )
+        ->assertActionShouldOpenUrlInNewTab(TestAction::make('open')->table($file));
 });
 
 test('an administrator command creates an account with panel access', function (): void {

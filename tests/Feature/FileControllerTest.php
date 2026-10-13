@@ -166,6 +166,21 @@ test('file cannot exceed ten megabytes', function (): void {
     Storage::disk('local')->assertDirectoryEmpty('files');
 });
 
+test('file is rejected when its reported MIME type differs from its content MIME type', function (): void {
+    Storage::fake('local');
+    $file = UploadedFile::fake()->create('documento.txt', 1, 'application/pdf');
+
+    $response = $this->from(route('home'))->post(route('files.store'), ['file' => $file]);
+
+    $response
+        ->assertRedirectToRoute('home')
+        ->assertInvalid([
+            'file' => 'O MIME type informado não corresponde ao conteúdo do arquivo.',
+        ]);
+    expect(File::count())->toBe(0);
+    Storage::disk('local')->assertDirectoryEmpty('files');
+});
+
 test('file can have exactly ten megabytes', function (): void {
     Storage::fake('local');
     $file = UploadedFile::fake()->create('limite.bin', 10 * 1024);

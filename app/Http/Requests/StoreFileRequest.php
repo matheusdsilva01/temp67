@@ -7,6 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Validator;
 use RuntimeException;
 
 class StoreFileRequest extends FormRequest
@@ -40,6 +41,27 @@ class StoreFileRequest extends FormRequest
         return [
             'file' => ['required', 'file', 'max:10240'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $file = $this->file('file');
+
+            if (! $file || ! $file->isValid()) {
+                return;
+            }
+
+            $clientMime = $file->getClientMimeType();
+            $contentMime = $file->getMimeType();
+
+            if ($clientMime !== $contentMime) {
+                $validator->errors()->add(
+                    'file',
+                    'O MIME type informado não corresponde ao conteúdo do arquivo.'
+                );
+            }
+        });
     }
 
     /**

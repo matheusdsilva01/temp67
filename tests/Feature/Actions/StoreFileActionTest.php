@@ -9,11 +9,12 @@ afterEach(function (): void {
     File::flushEventListeners();
 });
 
-test('stored file is removed when persistence fails', function (): void {
+test('should remove the stored file when persistence fails', function (): void {
     Storage::fake('local');
     File::creating(function (): never {
         throw new RuntimeException('Persistence failed.');
     });
+
     $uploadedFile = UploadedFile::fake()->create('document.txt', 1, 'text/plain');
 
     expect(fn () => app(StoreFileAction::class)->handle($uploadedFile))
